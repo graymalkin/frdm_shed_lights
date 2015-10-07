@@ -1,0 +1,10 @@
+GET /css/core.css HTTP/1.1
+Host: 192.168.16.23
+Connection: keep-alive
+Accept: */*
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36
+DNT: 1
+Referer: http://192.168.16.23/index.html
+Accept-Encoding: gzip, deflate, sdch
+Accept-Language: en-GB,en;q=0.8,en-US;q=0.6,en-CA;q=0.4,de;q=0.2,und;q=0.2
+

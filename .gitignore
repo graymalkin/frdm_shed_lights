@@ -1,0 +1,8 @@
+*.o
+*.hg/
+*.i
+*.d
+*.bin
+*.elf
+*.hex
+*.lib
