@@ -10,7 +10,7 @@
 
 typedef struct handler_t {
     const char * uri;
-    int (*handler)(void * param);
+    void (*handler)(void * param);
     void * extra_data;
 
     handler_t * next;
@@ -18,6 +18,7 @@ typedef struct handler_t {
 
 void http_server_start();
 void http_server_run();
+void http_server_add_handler(const char * uri, void (*handler)(void*), void * extra_data);
 void get_file(char* uri);
 
 int get_mime(const char * uri);

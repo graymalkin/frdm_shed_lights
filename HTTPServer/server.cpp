@@ -28,19 +28,44 @@ extern C12832 shld_lcd;
 EthernetInterface eth;
 TCPSocketServer server;
 TCPSocketConnection client;
-handler_t * function_list;
+handler_t * function_list = NULL;
 
 int rdCnt;
 
 void http_ok(const char * contentType);
 void http_serve_file(char * file, char * http_uri);
 
-handler_t * http_find_function(char * uri)
+handler_t * http_find_function(const char * uri)
 {
     for(handler_t * current_item = function_list; current_item != NULL; current_item = current_item->next)
     {
-
+        if(strcmp(uri, current_item->uri) == 0)
+            return current_item;
     }
+    return NULL;
+}
+
+void http_server_add_handler(const char * uri, void (*handler)(void*), void * extra_data)
+{
+
+    handler_t * new_handler = (handler_t*)malloc(sizeof(handler_t));
+    new_handler->uri = uri;
+    new_handler->handler = handler;
+    new_handler->extra_data = extra_data;
+    new_handler->next = NULL;
+
+    if(function_list == NULL)
+    {
+        function_list = new_handler;
+        return;
+    }
+
+
+    handler_t * last = function_list;
+    while(last->next != NULL)
+        last = last->next;
+
+    last->next = new_handler;
 }
 
 void http_server_start()
@@ -134,8 +159,22 @@ void get_file(char* uri)
     }
     else
     {
-        DBG(host.printf("%s (%s) was unhandled.\n", path, uri);)
-        http_not_found(uri);
+        handler_t * handler = http_find_function(uri);
+        if(handler != NULL)
+        {
+            http_ok("text/html");
+            sprintf(buffer, "%s\n", uri);
+            client.send(buffer, strlen(buffer));
+
+            handler->handler(handler->extra_data);
+
+            sprintf(buffer, "Done.\n");
+            client.send(buffer, strlen(buffer));
+        }
+        else{
+            DBG(host.printf("%s (%s) was unhandled.\n", path, uri);)
+            http_not_found(uri);
+        }
     }
 }
 
