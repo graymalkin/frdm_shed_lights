@@ -8,17 +8,25 @@
 #define HTTPD_MAX_FNAME_LENGTH      1024
 #define HTTPD_MAX_MIME_LENGTH       256
 
+typedef struct handler_t {
+    const char * uri;
+    void (*handler)(void * param);
+    void * extra_data;
+
+    handler_t * next;
+} handler_t;
+
+void http_server_start();
+void http_server_run();
+void http_server_add_handler(const char * uri, void (*handler)(void*), void * extra_data);
 void get_file(char* uri);
 
 int get_mime(const char * uri);
 int is_regular_file(const char *file);
 int is_directory(const char *file);
-void http_ok(const char * contentType);
 void http_not_found(char * uri);
 void http_entity_too_large();
 void http_bad_request();
-void http_serve_file(char * file, char * http_uri);
-void http_serve_directory(char * path, char * http_uri);
 
 
 #endif // __Server_h_
