@@ -136,7 +136,7 @@ void http_server_run(const void * threading_argument)
 int get_mime(char * uri)
 {
     char * ext = strrchr(uri, '.');
-    for(int i = 0; i < 641; i++){
+    for(int i = 0; i < MIME_TYPE_COUNT; i++){
         if(strcmp(ext, mime_types[i].extension) == 0){
             DBG(host.printf("Found extension %s for mime %s\n", ext, mime_types[i].mime);)
             return i;
@@ -207,13 +207,9 @@ void http_handle_request(char* uri)
         if(handler != NULL)
         {
             http_ok("text/html");
-            sprintf(buffer, "%s\n", uri);
-            client.send(buffer, strlen(buffer));
 
             handler->handler(handler->extra_data);
 
-            sprintf(buffer, "Done.\n");
-            client.send(buffer, strlen(buffer));
             return;
         }
         else{

@@ -3,6 +3,8 @@ typedef struct mime {
 	const char * mime;
 } mime_t;
 
+#define MIME_TYPE_COUNT (sizeof(mime_types)/sizeof(mime_t))
+
 const mime_t mime_types[] = {
 	{".3dm", "x-world/x-3dmf"},
 	{".3dmf", "x-world/x-3dmf"},
@@ -489,6 +491,7 @@ const mime_t mime_types[] = {
 	{".sv4crc", "application/x-sv4crc"}, 
 	{".svf", "image/vnd.dwg"}, 
 	{".svf", "image/x-dwg"}, 
+	{".svg", "image/svg+xml"},
 	{".svr", "application/x-world"}, 
 	{".svr", "x-world/x-svr"}, 
 	{".swf", "application/x-shockwave-flash"}, 
