@@ -1,10 +1,8 @@
-
 #include <stdio.h>
 #include <string.h>
 
 #include "server.h"
 #include "mime.h"
-#include "C12832.h"
 #include "EthernetInterface.h"
 #include "NetworkAPI/buffer.hpp"
 #include "NetworkAPI/select.hpp"
@@ -23,8 +21,11 @@ char *uristr;
 char *eou;
 char *qrystr;
 
+#ifdef DEBUGGING
 extern Serial host;
+#include "C12832.h"
 extern C12832 shld_lcd;
+#endif
 
 EthernetInterface eth;
 TCPSocketServer server;
@@ -33,8 +34,21 @@ handler_t * function_list = NULL;
 
 int rdCnt;
 
+/* HTTP Header Responses */
+void http_not_found(char * uri);
+void http_entity_too_large();
+void http_bad_request();
 void http_ok(const char * contentType);
+
 void http_serve_file(char * file, char * http_uri);
+void http_serve_directory(char * path, char * http_uri);
+
+void http_handle_request(char* uri);
+int is_regular_file(const char *file);
+int is_directory(const char *file);
+
+int get_mime(const char * uri);
+
 
 handler_t * http_find_function(const char * uri)
 {
@@ -75,16 +89,16 @@ void http_server_start()
     eth.connect();
 
     DBG(host.baud(115200);)
+    DBG(shld_lcd.cls();)
+    DBG(shld_lcd.locate(1,1);)
+    DBG(shld_lcd.printf("IP Address: %s", eth.getIPAddress());)
 
-    shld_lcd.cls();
-    shld_lcd.locate(1,1);
-    shld_lcd.printf("IP Address is %s\n", eth.getIPAddress());
- 
     server.bind(HTTPD_SERVER_PORT);
     server.listen();
+
 }
 
-void http_server_run()
+void http_server_run(const void * threading_argument)
 {
     while (true) {
         DBG(host.printf("\nWait for new connection...\r\n");)
@@ -108,8 +122,9 @@ void http_server_run()
                 if (eou == NULL) {
                     http_bad_request();
                 } else {
-                    *eou = 0;
-                    get_file(uristr);
+                    // Terminate the URI with a \0
+                    *eou = '\0';
+                    http_handle_request(uristr);
                 }
             }
         }
@@ -131,9 +146,9 @@ int get_mime(char * uri)
     return -1;
 }
 
-void get_file(char* uri)
+void http_handle_request(char* uri)
 {
-    DBG(host.printf("get_file %s\n", uri);)
+    DBG(host.printf("http_handle_request %s\n", uri);)
 
     // Construct the path to the file requested
     // TODO: Define /sd/ as the root
@@ -145,18 +160,46 @@ void get_file(char* uri)
         // Client is requesting a normal file
         DBG(host.printf("Regular file %s requested.\n", path);)
         http_serve_file(path, uri);
+        return;
     }
     else if(strcmp(uri, "/") == 0)
     {
         // Client is requesting the index.html page
         DBG(host.printf("Website index requested.\n");)
-        sprintf(path, "/sd/index.html");
-        http_serve_file(path, (char*)"/index.html");
+
+        // If there is an index.html
+        if(is_regular_file("/sd/index.html"))
+        {
+            sprintf(path, "/sd/index.html");
+            http_serve_file(path, (char*)"/index.html");
+            return;
+        }
+        else
+        {
+            DBG(host.printf("No index.html found.\n");)
+
+            // Ignore warning about deprication of casting `const char*' to `char *'
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wwrite-strings"
+            http_serve_directory("/sd/", "/");
+            #pragma GCC diagnostic pop
+ 
+            return;
+        }
     }
-    else if(is_directory(path))
+    
+    // The file system doesn't like paths with a trailing /
+    char *lstchr = strrchr(path, '\0') -1;
+    if(*lstchr == '/')
+        *lstchr = '\0';
+
+
+    if(is_directory(path))
     {
         // Client is requesting index of directory
         DBG(host.printf("Index of %s directory requested.\n", path);)
+        http_serve_directory(path, uri);
+        return;
     }
     else
     {
@@ -171,6 +214,7 @@ void get_file(char* uri)
 
             sprintf(buffer, "Done.\n");
             client.send(buffer, strlen(buffer));
+            return;
         }
         else{
             DBG(host.printf("%s (%s) was unhandled.\n", path, uri);)
@@ -179,19 +223,33 @@ void get_file(char* uri)
     }
 }
 
-// Credit to http://stackoverflow.com/questions/4553012/checking-if-a-file-is-a-directory-or-just-a-file
 int is_regular_file(const char *file)
 {
-    struct stat path_stat;
-    stat(file, &path_stat);
-    return S_ISREG(path_stat.st_mode);
+    DBG(host.printf("Testing file: ... ");)
+    // if it's a file we should be able to fopen it
+    FILE *fp_test = fopen(file, "r");
+    if(fp_test == NULL){
+        DBG(host.printf("%s is not a file.\n", file);)
+        return 0;
+    }
+
+    DBG(host.printf("%s is a file.\n", file);)
+    fclose(fp_test);
+    return 1;
 }
 
 int is_directory(const char *file)
 {
-    struct stat path_stat;
-    stat(file, &path_stat);
-    return S_ISDIR(path_stat.st_mode);
+    // if it's a directory we should be able to opendir it
+    DIR *dir_test = opendir(file);
+    if(dir_test == NULL){
+        DBG(host.printf("%s is not a directory.\n", file);)
+        return 0;
+    }
+
+    DBG(host.printf("%s is a directory.\n", file);)
+    closedir(dir_test);
+    return 1;
 }
 
 void http_ok(const char * contentType)
@@ -204,17 +262,6 @@ void http_ok(const char * contentType)
     else
         sprintf(httpHeader, "HTTP/1.1 200 OK\r\n"
                             "Connection: Close\r\n\r\n");
-}
-
-void http_not_found(char * uri)
-{
-    sprintf(httpHeader,"HTTP/1.1 404 Not Found \r\n"
-                        "Content-Type: text/plain\r\n"
-                        "Connection: Close\r\n\r\n");
-    client.send(httpHeader,strlen(httpHeader));
-    sprintf(buffer, "404.\r\n"
-                    "%s not found on this server.", uri);
-    client.send(buffer, strlen(buffer));
 }
 
 void http_entity_too_large()
@@ -231,6 +278,18 @@ void http_bad_request()
     sprintf(httpHeader,"HTTP/1.1 400 Bad Request \r\nContent-Type: text\r\nConnection: Close\r\n\r\n");
     client.send(httpHeader,strlen(httpHeader));
     client.send(buffer,strlen(buffer));
+}
+
+void http_not_found(char * uri)
+{
+    DBG(host.printf("HTTP Not Found (404).\n");)
+    sprintf(httpHeader,"HTTP/1.1 404 Not Found \r\n" \
+                        "Content-Type: text/plain\r\n" \
+                        "Connection: Close\r\n\r\n");
+    client.send(httpHeader,strlen(httpHeader));
+    sprintf(buffer, "404.\n" \
+                    "%s not found on this server. \n\n%s", uri, path);
+    client.send(buffer, strlen(buffer));
 }
 
 void http_serve_file(char * file, char * http_uri)
@@ -256,4 +315,36 @@ void http_serve_file(char * file, char * http_uri)
         client.send(buffer, rdCnt);
         fclose(fp);
     }
+}
+
+void http_serve_directory(char * path, char * http_uri)
+{
+    DBG(host.printf("Path: [%s], length: %d\n", path, strlen(path));)
+    DIR *dir = opendir(path);
+
+    struct dirent *dirEntry;
+    if (dir == NULL) {
+        http_not_found(http_uri);
+    }
+    else
+    {
+        http_ok("text/html");
+
+        sprintf(buffer, "<h1>Index of %s</h1>\n<hr />\n<pre>", path);
+        client.send(buffer, strlen(buffer));
+
+        while ((dirEntry = readdir(dir)) != NULL) {
+            char * temp = (char*)malloc(strlen(path) + strlen(dirEntry->d_name));
+            sprintf(temp, "%s/%s", path, dirEntry->d_name);
+            if(is_directory(temp))
+                sprintf(buffer, "<a href=\"./%s/\">%s/</a>\n", dirEntry->d_name, dirEntry->d_name);
+            else
+                sprintf(buffer, "<a href=\"./%s\">%s</a>\n", dirEntry->d_name, dirEntry->d_name);
+            free(temp);
+            client.send(buffer, strlen(buffer));
+        }
+        sprintf(buffer, "</pre>");
+        client.send(buffer, strlen(buffer));
+    }
+    closedir(dir);
 }

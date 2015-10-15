@@ -1,4 +1,5 @@
 #include <stdio.h>
+
 #include <string.h>
 #include "mbed.h"
  
@@ -50,7 +51,11 @@ int main (void)
 
     lights_ticker.attach(poke_lights, 120);
 
-    http_server_run();
+    http_server_run(NULL);
+    // Thread http_server = Thread(http_server_run);
+
+    // while(true)
+    //     Thread::yield();
 }
 
 

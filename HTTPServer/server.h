@@ -17,16 +17,7 @@ typedef struct handler_t {
 } handler_t;
 
 void http_server_start();
-void http_server_run();
+void http_server_run(const void * threading_argument);
 void http_server_add_handler(const char * uri, void (*handler)(void*), void * extra_data);
-void get_file(char* uri);
-
-int get_mime(const char * uri);
-int is_regular_file(const char *file);
-int is_directory(const char *file);
-void http_not_found(char * uri);
-void http_entity_too_large();
-void http_bad_request();
-
 
 #endif // __Server_h_

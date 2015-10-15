@@ -24,6 +24,9 @@ OBJCOPY = $(GCC_BIN)arm-none-eabi-objcopy
 OBJDUMP = $(GCC_BIN)arm-none-eabi-objdump
 SIZE    = $(GCC_BIN)arm-none-eabi-size 
 
+COLOR_GREEN = "\e[32m"
+COLOR_RESET = "\e[0m"
+
 ifeq ($(HARDFP),1)
 	FLOAT_ABI = hard
 else
@@ -55,32 +58,41 @@ clean:
 
 
 .asm.o:
-	$(CC) $(CPU) -c -x assembler-with-cpp -o $@ $<
+	@$(CC) $(CPU) -c -x assembler-with-cpp -o $@ $<
+	@echo -e [$(COLOR_GREEN)ASM$(COLOR_RESET)] $@
 .s.o:
-	$(CC) $(CPU) -c -x assembler-with-cpp -o $@ $<
+	@$(CC) $(CPU) -c -x assembler-with-cpp -o $@ $<
+	@echo -e [$(COLOR_GREEN)ASM$(COLOR_RESET)] $@
 .S.o:
-	$(CC) $(CPU) -c -x assembler-with-cpp -o $@ $<
+	@$(CC) $(CPU) -c -x assembler-with-cpp -o $@ $<
+	@echo -e [$(COLOR_GREEN)ASM$(COLOR_RESET)] $@
 
 .c.o:
-	$(CC)  $(CC_FLAGS) $(CC_SYMBOLS) -std=gnu99   $(INCLUDE_PATHS) -o $@ $<
+	@$(CC)  $(CC_FLAGS) $(CC_SYMBOLS) -std=gnu99   $(INCLUDE_PATHS) -o $@ $<
+	@echo -e [$(COLOR_GREEN)CC$(COLOR_RESET)]\ \ $@
 
 .cpp.o:
-	$(CPP) $(CC_FLAGS) $(CC_SYMBOLS) -std=gnu++98 -fno-rtti $(INCLUDE_PATHS) -o $@ $<
+	@$(CPP) $(CC_FLAGS) $(CC_SYMBOLS) -std=gnu++98 -fno-rtti $(INCLUDE_PATHS) -o $@ $<
+	@echo -e [$(COLOR_GREEN)C++$(COLOR_RESET)] $@
 
 
 
 $(PROJECT).elf: $(OBJECTS) $(SYS_OBJECTS)
-	$(LD) $(LD_FLAGS) -T$(LINKER_SCRIPT) $(LIBRARY_PATHS) -o $@ $^ $(LIBRARIES) $(LD_SYS_LIBS) $(LIBRARIES) $(LD_SYS_LIBS)
+	@$(LD) $(LD_FLAGS) -T$(LINKER_SCRIPT) $(LIBRARY_PATHS) -o $@ $^ $(LIBRARIES) $(LD_SYS_LIBS) $(LIBRARIES) $(LD_SYS_LIBS)
+	@echo -e [$(COLOR_GREEN)LD$(COLOR_RESET)]\ \ $@
 
 
 $(PROJECT).bin: $(PROJECT).elf
-	$(OBJCOPY) -O binary $< $@
+	@$(OBJCOPY) -O binary $< $@
+	@echo -e [$(COLOR_GREEN)BIN$(COLOR_RESET)] $@
 
 $(PROJECT).hex: $(PROJECT).elf
 	@$(OBJCOPY) -O ihex $< $@
+	@echo -e [$(COLOR_GREEN)HEX$(COLOR_RESET)] $@
 
 $(PROJECT).lst: $(PROJECT).elf
 	@$(OBJDUMP) -Sdh $< > $@
+	@echo -e [$(COLOR_GREEN)LST$(COLOR_RESET)] $@
 
 lst: $(PROJECT).lst
 
@@ -91,5 +103,5 @@ DEPS = $(OBJECTS:.o=.d) $(SYS_OBJECTS:.o=.d)
 -include $(DEPS)
 
 deploy: all
-	cp $(PROJECT).bin /cygdrive/e/
+	cp $(PROJECT).bin /cygdrive/g/
 
