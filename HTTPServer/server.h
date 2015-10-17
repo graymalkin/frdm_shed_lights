@@ -1,3 +1,7 @@
+/*
+ * (C) The University of Kent and Simon Cooksey 2015.
+ */
+
 #ifndef __Server_h_
 #define __Server_h_
 

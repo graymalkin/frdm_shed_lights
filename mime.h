@@ -1,3 +1,7 @@
+/*
+ * (C) The University of Kent and Simon Cooksey 2015.
+ */
+
 typedef struct mime {
 	const char * extension;
 	const char * mime;
