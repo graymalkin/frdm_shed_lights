@@ -19,12 +19,15 @@
 #include "debugging.h"
 #include "mime.h"
 #include "server.h"
+#include "DHT22.h"
 
 Serial host(USBTX, USBRX);
 C12832 shld_lcd (D11, D13, D12, D7, D10);   /* LCD on the shield (128x32) */
 DigitalOut red_led(LED1);
+DHT22 dht22(PTB18);
 SDFileSystem sd_card(PTE3, PTE1, PTE2, PTE4, "sd"); // MOSI, MISO, SCK, CS
-Ticker lights_ticker;
+Ticker lights_ticker, dht22_ticker;
+DHT22_data_t dht22_data = {0,0,0};
 
 void query_light_state(void * param);
 
@@ -42,8 +45,8 @@ void poke_lights()
     sendRC5raw(current_light_state);
     
     red_led = 0;
-    wait_ms(10)
-;    red_led = 1;
+    wait_ms(10);
+    red_led = 1;
     wait_ms(10);   
 }
 
@@ -75,10 +78,20 @@ void query_light_state(void * param)
     client.send(buffer, strlen(buffer));
 }
 
+void read_dht22()
+{
+    dht22.read(&dht22_data);
+    shld_lcd.locate(1,10);
+    shld_lcd.printf("Humidity: %0.1f %%", (float)dht22_data.humidity/10);
+    shld_lcd.locate(1,20);
+    shld_lcd.printf("Temperature: %0.1f C", (float)dht22_data.temp/10);
+}
+
 int main (void)
 {
     http_server_start();
-    
+    read_dht22();
+
     //void http_server_add_handler(const char * uri, void (*handler)(void*), void * extra_data)
     http_server_add_handler("/on", send_light_command, (void *) 0xf6F);
     http_server_add_handler("/off", send_light_command, (void *) 0xf73);
@@ -87,6 +100,7 @@ int main (void)
     http_server_add_handler("/query", query_light_state, NULL);
 
     lights_ticker.attach(poke_lights, 120);
+    dht22_ticker.attach(read_dht22, 10);
 
     http_server_run(NULL);
 }
