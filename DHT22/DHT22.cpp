@@ -143,7 +143,7 @@ void DHT22::read(DHT22_data_t * data)
 	// Read checksum  (8)
 	uint8_t checksum = read_checksum();
 
-	data->humidity = humidity;
-	data->temp = temp;
+	data->humidity = (humidity);
+	data->temp = (temp);
 	data->checksum = checksum;
 }

@@ -16,8 +16,8 @@ typedef enum {
 } edge_type_t;
 
 typedef struct {
-	int16_t temp;
-	int16_t humidity;
+	int temp;
+	int humidity;
 	uint8_t checksum;
 } DHT22_data_t;
 
