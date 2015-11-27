@@ -17,8 +17,6 @@ extern C12832 shld_lcd;
 
 int current_light_state = LIGHTS_ON;
 
-extern volatile int state;
-
 DHT22 dht22(PTB18);
 DHT22_data_t dht22_data = {0,0,0};
 
@@ -131,7 +129,6 @@ int read_gy2y10(MQTT::Client<MQTTEthernet, Countdown>& m_client)
 
 void update_screen()
 {
-    dht22.read(&dht22_data);
     shld_lcd.locate(1,10);
     shld_lcd.printf("Humidity: %0.1f %%", ((float)dht22_data.humidity/10));
     shld_lcd.locate(1,20);
