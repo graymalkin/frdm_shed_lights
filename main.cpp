@@ -22,7 +22,7 @@ C12832 shld_lcd (D11, D13, D12, D7, D10);   /* LCD on the shield (128x32) */
 DigitalOut red_led(LED_RED);
 DigitalOut green_led(LED_GREEN);
 DigitalOut blue_led(LED_BLUE);
-Ticker lights_ticker, dht22_ticker, particle_ticker, screen_ticker;
+Ticker lights_ticker, sensor_ticker, mappable;
 
 volatile int state = STATE_NONE;
 
@@ -30,7 +30,7 @@ volatile int state = STATE_NONE;
  * These functions are called as an interrupt when tickers tick. They move the state machine to a
  * different state.
  */
-void set_update_screen()   { state = SCREEN_WRITE;    }
+void set_mapable_update()  { state = MAPPABLE_UPDATE;    }
 void set_update_sensors()  { state = READ_SENSORS;    }
 
 int main (void)
@@ -39,7 +39,7 @@ int main (void)
     // https://developer.mbed.org/teams/mqtt/code/HelloMQTT
     MQTTEthernet ipstack;
     MQTT::Client<MQTTEthernet, Countdown> m_client(ipstack);
-    if(mqtt_connect(ipstack, m_client) == MQTT::FAILURE) {
+    if(mqtt_connect(ipstack, m_client) != MQTT::SUCCESS) {
         mqtt_error();
     }
     mqtt_subscriptions(m_client);
@@ -56,7 +56,21 @@ int main (void)
     lights_ticker.attach(poke_lights, 120);       /* Every 3 minutes, send the current light code */
     wait_ms(500);                                 /* Space interrupts to avoid clashes */
 
-    dht22_ticker.attach(set_update_sensors, 5);   /* Read sensor values every 5s */
+    sensor_ticker.attach(set_update_sensors, 5);   /* Read sensor values every 5s */
+
+    mappable.attach(set_mapable_update,  60);
+
+    if(send_topics(m_client) != MQTT::SUCCESS) {
+        mqtt_error();
+    }
+    wait_ms(100);
+    if(location(m_client) != MQTT::SUCCESS) {
+        mqtt_error();
+    }
+    wait_ms(100);
+    if(send_mappable(m_client) != MQTT::SUCCESS) {
+        mqtt_error();
+    }
 
     char s_state = STATE_NONE;
     while(1)
@@ -80,28 +94,38 @@ int main (void)
         switch (s_state)
         {
             case READ_SENSORS:
-                if(read_dht22(m_client) == MQTT::FAILURE) {
+                if(read_dht22(m_client) != MQTT::SUCCESS) {
                     mqtt_error();
                 }
                 // If we send too quickly, MQTT falls over >.>
                 wait_ms(100);
 
-                if(read_gy2y10(m_client) == MQTT::FAILURE) {
+                if(read_gy2y10(m_client) != MQTT::SUCCESS) {
                     mqtt_error();
                 }
                 // If we send too quickly, MQTT falls over >.>
                 wait_ms(100);
 
-                if(query_light_state(m_client) == MQTT::FAILURE) {
+                if(query_light_state(m_client) != MQTT::SUCCESS) {
                     mqtt_error();
                 }
                 // If we send too quickly, MQTT falls over >.>
                 wait_ms(100);
-
                 update_screen();
                 break;
-            case SCREEN_WRITE:
-                update_screen();
+            case MAPPABLE_UPDATE:
+                if(send_topics(m_client) != MQTT::SUCCESS) {
+                    mqtt_error();
+                }
+                wait_ms(100);
+                if(location(m_client) != MQTT::SUCCESS) {
+                    mqtt_error();
+                }
+                wait_ms(100);
+                if(send_mappable(m_client) != MQTT::SUCCESS) {
+                    mqtt_error();
+                }
+                wait_ms(100);
                 break;
             default:
                 break;

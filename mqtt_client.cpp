@@ -26,7 +26,7 @@ int mqtt_connect(MQTTEthernet& ipstack, MQTT::Client<MQTTEthernet, Countdown>& m
 
 int mqtt_subscriptions(MQTT::Client<MQTTEthernet, Countdown>& m_client)
 {
-    return m_client.subscribe("sjc80/set_lights", MQTT::QOS1, set_light_state);
+    return m_client.subscribe("unikent/users/sjc80/set_lights", MQTT::QOS1, set_light_state);
 }
 
 void mqtt_error()

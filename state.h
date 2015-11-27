@@ -11,7 +11,7 @@
 typedef enum STATE {
     STATE_NONE,
     READ_SENSORS,
-    SCREEN_WRITE
+    MAPPABLE_UPDATE
 } STATE;
 
 /**

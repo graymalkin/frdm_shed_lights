@@ -92,7 +92,7 @@ private:
  * @param Network a network class which supports send, receive
  * @param Timer a timer class with the methods:
  */
-template<class Network, class Timer, int MAX_MQTT_PACKET_SIZE = 100, int MAX_MESSAGE_HANDLERS = 5>
+template<class Network, class Timer, int MAX_MQTT_PACKET_SIZE = 1000, int MAX_MESSAGE_HANDLERS = 5>
 class Client
 {
 
@@ -121,7 +121,7 @@ public:
      *  @return success code -
      */
     int connect();
-    
+
         /** MQTT Connect - send an MQTT connect packet down the network and wait for a Connack
      *  The nework object must be connected to the network endpoint before calling this
      *  @param options - connect options
@@ -135,7 +135,7 @@ public:
      *  @return success code -
      */
     int publish(const char* topicName, Message& message);
-    
+
     /** MQTT Publish - send an MQTT publish packet and wait for all acks to complete for all QoSs
      *  @param topic - the topic to publish to
      *  @param payload - the data to send
@@ -145,12 +145,12 @@ public:
      *  @return success code -
      */
     int publish(const char* topicName, void* payload, size_t payloadlen, enum QoS qos = QOS0, bool retained = false);
-    
+
     /** MQTT Publish - send an MQTT publish packet and wait for all acks to complete for all QoSs
      *  @param topic - the topic to publish to
      *  @param payload - the data to send
      *  @param payloadlen - the length of the data
-     *  @param id - the packet id used - returned 
+     *  @param id - the packet id used - returned
      *  @param qos - the QoS to send the publish at
      *  @param retained - whether the message should be retained
      *  @return success code -
@@ -253,7 +253,7 @@ private:
 
 
 template<class Network, class Timer, int a, int MAX_MESSAGE_HANDLERS>
-void MQTT::Client<Network, Timer, a, MAX_MESSAGE_HANDLERS>::cleanSession() 
+void MQTT::Client<Network, Timer, a, MAX_MESSAGE_HANDLERS>::cleanSession()
 {
     ping_outstanding = false;
     for (int i = 0; i < MAX_MESSAGE_HANDLERS; ++i)
@@ -347,7 +347,7 @@ int MQTT::Client<Network, Timer, a, b>::sendPacket(int length, Timer& timer)
     }
     else
         rc = FAILURE;
-        
+
 #if defined(MQTT_DEBUG)
     char printbuf[150];
     DEBUG("Rc %d from sending packet %s\n", rc, MQTTFormat_toServerString(printbuf, sizeof(printbuf), sendbuf, length));
@@ -423,7 +423,7 @@ int MQTT::Client<Network, Timer, MAX_MQTT_PACKET_SIZE, b>::readPacket(Timer& tim
     if (this->keepAliveInterval > 0)
         last_received.countdown(this->keepAliveInterval); // record the fact that we have successfully received a packet
 exit:
-        
+
 #if defined(MQTT_DEBUG)
     if (rc >= 0)
     {
@@ -587,7 +587,7 @@ int MQTT::Client<Network, Timer, MAX_MQTT_PACKET_SIZE, b>::cycle(Timer& timer)
             unsigned char dup, type;
             if (MQTTDeserialize_ack(&type, &dup, &mypacketid, readbuf, MAX_MQTT_PACKET_SIZE) != 1)
                 rc = FAILURE;
-            else if ((len = MQTTSerialize_ack(sendbuf, MAX_MQTT_PACKET_SIZE, 
+            else if ((len = MQTTSerialize_ack(sendbuf, MAX_MQTT_PACKET_SIZE,
                         (packet_type == PUBREC) ? PUBREL : PUBCOMP, 0, mypacketid)) <= 0)
                 rc = FAILURE;
             else if ((rc = sendPacket(len, timer)) != SUCCESS) // send the PUBREL packet
@@ -597,7 +597,7 @@ int MQTT::Client<Network, Timer, MAX_MQTT_PACKET_SIZE, b>::cycle(Timer& timer)
             if (packet_type == PUBREL)
                 freeQoS2msgid(mypacketid);
             break;
-            
+
         case PUBCOMP:
             break;
 #endif

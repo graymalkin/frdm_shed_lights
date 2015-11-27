@@ -43,6 +43,13 @@ int read_dht22(MQTT::Client<MQTTEthernet, Countdown>& m_client);
  */
 int read_gy2y10(MQTT::Client<MQTTEthernet, Countdown>& m_client);
 
+int send_topics(MQTT::Client<MQTTEthernet, Countdown>& m_client);
+
+int location(MQTT::Client<MQTTEthernet, Countdown>& m_client);
+
+int send_mappable(MQTT::Client<MQTTEthernet, Countdown>& m_client);
+
+
 /**
  * Display sensor readings on the LCD
  */
