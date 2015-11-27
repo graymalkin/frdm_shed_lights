@@ -14,7 +14,6 @@
 #include "mqtt_client.h"
 #include "MQTTEthernet.h"
 #include "mqtt_event_handlers.h"
-#include "mime.h"
 #include "RC5Send.h"
 #include "state.h"
 
