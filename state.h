@@ -5,12 +5,18 @@
 #ifndef __state_h_
 #define __state_h_
 
+/**
+ * States for the MQTT state machine
+ */
 typedef enum STATE {
     STATE_NONE,
     READ_SENSORS,
     SCREEN_WRITE
 } STATE;
 
+/**
+ * States for the lights
+ */
 typedef enum LIGHT_STATE {
     LIGHTS_ON   = 0xf6f,
     LIGHTS_DIM1 = 0xf73,
