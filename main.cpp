@@ -35,9 +35,7 @@ Ticker lights_ticker, dht22_ticker, particle_ticker, screen_ticker;
 enum STATE {
     STATE_NONE,
     READ_SENSORS,
-    SCREEN_WRITE,
-    QUERY_LIGHTS,
-    RECONNECT
+    SCREEN_WRITE
 } STATE;
 
 enum LIGHT_STATE {
@@ -81,7 +79,7 @@ int query_light_state(MQTT::Client<MQTTEthernet, Countdown>& m_client)
          default:
             break;
     }
-    message.qos = MQTT::QOS1;   // Send at least once
+    message.qos = MQTT::QOS0;   // Send at least once
     // Do not null terminate -- we have a length field, and it will piss off the JS front end
     message.payloadlen = strlen(pub_str);
     message.payload = (void*)pub_str;
@@ -107,8 +105,8 @@ void set_light_state(MQTT::MessageData& message_data)
     {
         case 0:
             // Lights on
-            green_led = 1;
-            blue_led = 1;
+            green_led = 0;
+            blue_led = 0;
             sendRC5raw(LIGHTS_ON);
             current_light_state = LIGHTS_ON;
             break;
@@ -128,8 +126,8 @@ void set_light_state(MQTT::MessageData& message_data)
             break;
         case 3:
             // Lights off
-            green_led = 0;
-            blue_led = 0;
+            green_led = 1;
+            blue_led = 1;
             sendRC5raw(LIGHTS_OFF);
             current_light_state = LIGHTS_OFF;
             break;
@@ -137,7 +135,6 @@ void set_light_state(MQTT::MessageData& message_data)
             // Invalid
             break;
     }
-    state = QUERY_LIGHTS;
 }
 
 void update_screen()
@@ -194,11 +191,14 @@ int mqtt_subscriptions(MQTT::Client<MQTTEthernet, Countdown>& m_client)
 }
 
 
-void print_mqtt_error()
+void mqtt_error()
 {
     shld_lcd.locate(0,0);
     shld_lcd.cls();
     shld_lcd.printf("MQTT Error.");
+    wait_ms(5000);
+    // If something goes wrong, just reboot. Nasty nasty hack.
+    NVIC_SystemReset();
 }
 
 void set_update_screen()   { state = SCREEN_WRITE;  }
@@ -211,7 +211,9 @@ int main (void)
     // https://developer.mbed.org/teams/mqtt/code/HelloMQTT
     MQTTEthernet ipstack;
     MQTT::Client<MQTTEthernet, Countdown> m_client(ipstack);
-    mqtt_connect(ipstack, m_client);
+    if(mqtt_connect(ipstack, m_client) == MQTT::FAILURE) {
+        mqtt_error();
+    }
     mqtt_subscriptions(m_client);
 
     // Turn off the LEDs
@@ -225,17 +227,14 @@ int main (void)
 
     // Tickers to periodically update the state machine's state
     lights_ticker.attach(set_update_lights, 120); /* Every 3 minutes, send the current light code */
-    wait_ms(333);                                 /* Space the interrupts appart to prevent clashes */
+    wait_ms(500);                                 /* Space interrupts to avoid clashes */
 
     dht22_ticker.attach(set_update_sensors, 1);   /* Read sensor values every 1s */
-    wait_ms(333);                                 /* Space the interrupts appart to prevent clashes */
-
-    screen_ticker.attach(set_update_screen, 5);   /* Update the screen every 5s */
 
     char s_state = STATE_NONE;
     while(1)
     {
-        sleep();
+        m_client.yield(500);
 
         // Take a copy of the save state and then reset the state machine for the next IRQ
         __disable_irq();
@@ -256,43 +255,27 @@ int main (void)
         {
             case READ_SENSORS:
                 if(read_dht22(m_client) == MQTT::FAILURE) {
-                    print_mqtt_error();
-                    __disable_irq();
-                    state = RECONNECT;
+                    mqtt_error();
                 }
                 if(read_gy2y10(m_client) == MQTT::FAILURE) {
-                    print_mqtt_error();
-                    __disable_irq();
-                    state = RECONNECT;
+                    mqtt_error();
                 }
                 if(query_light_state(m_client) == MQTT::FAILURE) {
-                    print_mqtt_error();
-                    __disable_irq();
-                    state = RECONNECT;
+                    mqtt_error();
                 }
+                update_screen();
                 break;
             case SCREEN_WRITE:
                 update_screen();
                 break;
-            case QUERY_LIGHTS:
-                if(query_light_state(m_client)== MQTT::FAILURE) {
-                    print_mqtt_error();
-                    __disable_irq();
-                    state = RECONNECT;
-                }
-                break;
-            case RECONNECT:
-                if(mqtt_connect(ipstack, m_client) == MQTT::FAILURE) {
-                    print_mqtt_error();
-                    __disable_irq();
-                    state = RECONNECT;
-                }
-                break;
             default:
                 break;
         }
-        s_state = STATE_NONE;
+
+        __disable_irq();
+        state = STATE_NONE;
+        __enable_irq();
+
         red_led = 1;
-        m_client.yield(500);
     }
 }
