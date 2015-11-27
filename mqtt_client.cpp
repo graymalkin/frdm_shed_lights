@@ -10,8 +10,8 @@ extern C12832 shld_lcd;
 
 int mqtt_connect(MQTTEthernet& ipstack, MQTT::Client<MQTTEthernet, Countdown>& m_client)
 {
-    char hostname[] = "192.168.16.19";
-    int port = 1883;
+    char hostname[] = MQTT_HOST;
+    int port = MQTT_PORT;
     shld_lcd.locate(0,0);
     shld_lcd.printf("Connecting...\n");
     int result = ipstack.connect(hostname, port);

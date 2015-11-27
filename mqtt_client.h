@@ -8,6 +8,9 @@
 #include "MQTTEthernet.h"
 #include "MQTTClient.h"
 
+#define MQTT_HOST "192.168.16.19"
+#define MQTT_PORT 1883
+
 /**
  * Attempt to connect to the MQTT Server.
  *

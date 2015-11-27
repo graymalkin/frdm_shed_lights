@@ -4,20 +4,35 @@ This project is to put [The Shed](https://www.cs.kent.ac.uk/makerspace/)'s
 lighting controls on the internet, and to monitor the air quality in The Shed
 throughout the day.
 
-## Sensors
+You will want to make this point to your server. To do this, change `MQTT_HOST`
+and `MQTT_PORT` as defined in `mqtt_client.h`.
+
+## Building
+
+You should be able to do:
+
+```bash
+make -j4
+cp ./frdm_shed_lights.bin G:/ # replace with your mbed's drive letter
+```
+
+to build and deploy to an FRDM K64F development board.
+
+## MQTT
+### Sensors
 
 | Sensor         | Endpoint                                          |
 |:--------------:|:--------------------------------------------------|
 | DHT22          | MQTT Published `sjc80/dht22`                      |
 | Particle count | MQTT Published `sjc80/particle_count`             |
 
-## State
+### State
 
 | Sensor         | Endpoint                                          |
 |:--------------:|:--------------------------------------------------|
 | State          | MQTT Published `sjc80/light_state`                |
 
-## Control
+### Control
 
 | Sensor         | Endpoint                                          |
 |:--------------:|:--------------------------------------------------|
