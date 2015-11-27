@@ -8,6 +8,9 @@
 #include "mbed.h"
 
 #include "C12832.h"
+
+#define MQTTCLIENT_QOS1 1
+#define MQTTCLIENT_QOS2 1
 #include "MQTTEthernet.h"
 #include "MQTTClient.h"
 
@@ -33,6 +36,7 @@ enum STATE {
     STATE_NONE,
     READ_SENSORS,
     SCREEN_WRITE,
+    QUERY_LIGHTS,
     RECONNECT
 } STATE;
 
@@ -52,28 +56,36 @@ MQTT::Message message;
 
 int query_light_state(MQTT::Client<MQTTEthernet, Countdown>& m_client)
 {
+    char lights_on[] = "{\"lights\": \"on\"}";
+    char lights_dim1[] = "{\"lights\": \"dim1\"}";
+    char lights_dim2[] = "{\"lights\": \"dim2\"}";
+    char lights_off[] = "{\"lights\": \"off\"}";
+    char lights_invalid[] = "{\"lights\": \"invalid\"}";
+
+    char * pub_str = lights_invalid;
+
     switch(current_light_state)
     {
         case LIGHTS_ON:
-            sprintf(buf, "{\"lights\": \"on\"}");
+            pub_str = lights_on;
             break;
         case LIGHTS_DIM1:
-            sprintf(buf, "{\"lights\": \"dim1\"}");
+            pub_str = lights_dim1;
             break;
         case LIGHTS_DIM2:
-            sprintf(buf, "{\"lights\": \"dim2\"}");
+            pub_str = lights_dim2;
             break;
         case LIGHTS_OFF:
-            sprintf(buf, "{\"lights\": \"off\"}");
+            pub_str = lights_off;
             break;
          default:
-            return 0;
+            break;
     }
-    message.qos = MQTT::QOS1;
+    message.qos = MQTT::QOS1;   // Send at least once
     // Do not null terminate -- we have a length field, and it will piss off the JS front end
-    message.payloadlen = strlen(buf);
-    message.payload = (void*)buf;
-    m_client.publish("sjc80/light_state", message);
+    message.payloadlen = strlen(pub_str);
+    message.payload = (void*)pub_str;
+    return m_client.publish("sjc80/light_state", message);
 }
 
 void poke_lights()
@@ -84,10 +96,13 @@ void poke_lights()
 void set_light_state(MQTT::MessageData& message_data)
 {
     MQTT::Message& message = message_data.message;
+    // Copy the message payload in to a null terminated cstring
     char c_buf[2] = {0,0};
     c_buf[0] = *((char*)message.payload);
-    host.printf("payload: %.*s\r\nc_buf: %s\r\n", message.payloadlen, message.payload, c_buf);
+
+    // Convert the string to a long
     long command = strtol(c_buf, NULL, 10);
+
     switch (command)
     {
         case 0:
@@ -95,29 +110,34 @@ void set_light_state(MQTT::MessageData& message_data)
             green_led = 1;
             blue_led = 1;
             sendRC5raw(LIGHTS_ON);
+            current_light_state = LIGHTS_ON;
             break;
         case 1:
             // Lights dim 1
             green_led = 0;
             blue_led = 1;
             sendRC5raw(LIGHTS_DIM1);
+            current_light_state = LIGHTS_DIM1;
             break;
         case 2:
             // Lights dim 2
             green_led = 1;
             blue_led = 0;
             sendRC5raw(LIGHTS_DIM2);
+            current_light_state = LIGHTS_DIM2;
             break;
         case 3:
             // Lights off
             green_led = 0;
             blue_led = 0;
             sendRC5raw(LIGHTS_OFF);
+            current_light_state = LIGHTS_OFF;
             break;
         default:
             // Invalid
             break;
     }
+    state = QUERY_LIGHTS;
 }
 
 void update_screen()
@@ -133,7 +153,7 @@ int read_dht22(MQTT::Client<MQTTEthernet, Countdown>& m_client)
     dht22.read(&dht22_data);
 
     sprintf(buf, "{\"dht22\": [%0.2f, %0.2f]}", ((float)dht22_data.temp/10), ((float)dht22_data.humidity/10));
-    message.qos = MQTT::QOS1;
+    message.qos = MQTT::QOS0;   // No QOS, just send and hope
     // Do not null terminate -- we have a length field, and it will piss off the JS front end
     message.payloadlen = strlen(buf);
     message.payload = (void*)buf;
@@ -145,7 +165,7 @@ int read_gy2y10(MQTT::Client<MQTTEthernet, Countdown>& m_client)
     particle_count = (int)(particle_counter.read() * 100);
 
     sprintf(buf, "{\"particle_count\": %0.2f}", particle_count);
-    message.qos = MQTT::QOS1;
+    message.qos = MQTT::QOS0;   // No QOS, just send and hope
     // Do not null terminate -- we have a length field, and it will piss off the JS front end
     message.payloadlen = strlen(buf);
     message.payload = (void*)buf;
@@ -170,7 +190,7 @@ int mqtt_connect(MQTTEthernet& ipstack, MQTT::Client<MQTTEthernet, Countdown>& m
 
 int mqtt_subscriptions(MQTT::Client<MQTTEthernet, Countdown>& m_client)
 {
-    return m_client.subscribe("sjc80/set_lights", MQTT::QOS2, set_light_state);
+    return m_client.subscribe("sjc80/set_lights", MQTT::QOS1, set_light_state);
 }
 
 
@@ -245,9 +265,21 @@ int main (void)
                     __disable_irq();
                     state = RECONNECT;
                 }
+                if(query_light_state(m_client) == MQTT::FAILURE) {
+                    print_mqtt_error();
+                    __disable_irq();
+                    state = RECONNECT;
+                }
                 break;
             case SCREEN_WRITE:
                 update_screen();
+                break;
+            case QUERY_LIGHTS:
+                if(query_light_state(m_client)== MQTT::FAILURE) {
+                    print_mqtt_error();
+                    __disable_irq();
+                    state = RECONNECT;
+                }
                 break;
             case RECONNECT:
                 if(mqtt_connect(ipstack, m_client) == MQTT::FAILURE) {
