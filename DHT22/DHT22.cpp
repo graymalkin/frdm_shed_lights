@@ -7,8 +7,8 @@
 
 #include "DHT22.h"
 
-/*  
- * The DHT22 uses a 1 wire interface, sending 1's and 0s by varying the length 
+/*
+ * The DHT22 uses a 1 wire interface, sending 1's and 0s by varying the length
  * of the HIGH time on the signal pin.
  */
 
@@ -28,7 +28,7 @@ int DHT22::wait_for_edge(edge_type_t type)
 		wait_us(2);
 		time+=2;
 	} while(dht22_s != (int)type);
-	
+
 	// wait for the edge to transition properly
 	wait_us(2);
 	return time;
@@ -60,7 +60,7 @@ void DHT22::await_start_response()
 /*
  * Reads 16 bits of data from the DHT22
  *
- * Returns: the signed value read. dht22_t. 
+ * Returns: the signed value read. dht22_t.
  * NB. the DHT22 uses a sign bit to do -ve and positive, but this is
  * incompatible with signed numbers in C, so the conversion is done here.
  */
@@ -95,7 +95,7 @@ int16_t DHT22::read_word()
 /*
  * Reads 8 bits of data from the DHT22
  *
- * Returns: the unsigned checksum value read. dht22_t. 
+ * Returns: the unsigned checksum value read. dht22_t.
  */
 uint8_t DHT22::read_checksum()
 {
