@@ -8,24 +8,20 @@ throughout the day.
 
 | Sensor         | Endpoint                                          |
 |:--------------:|:--------------------------------------------------|
-| Temperature    | GET `/query/temperature`                          |
-| Humidity       | GET `/query/humidity`                             |
-| Particle count | GET `/query/particle`                             |
+| DHT22          | MQTT Published `sjc80/dht22`                      |
+| Particle count | MQTT Published `sjc80/particle_count`             |
 
 ## State
 
 | Sensor         | Endpoint                                          |
 |:--------------:|:--------------------------------------------------|
-| State          | GET `/query/lights`                               |
+| State          | MQTT Published `sjc80/light_state`                |
 
 ## Control
 
 | Sensor         | Endpoint                                          |
 |:--------------:|:--------------------------------------------------|
-| Lights on      | GET `/on`                                         |
-| Lights off     | GET `/off`                                        |
-| Lights dim1    | GET `/dim1`                                       |
-| Lights dim2    | GET `/dim2`                                       |
+| Set lights     | MQTT Subscribes `sjc80/set_lights`                |
 
 
 ## License
@@ -33,4 +29,3 @@ throughout the day.
 Parts of this work are &copy; The University of Kent and Simon Cooksey.
 Various libraries are under separate licenses and have individual copy right
 holders.
-
